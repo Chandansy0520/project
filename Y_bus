@@ -1,0 +1,27 @@
+c=[1 2 0.05+0.15i 0.001i;
+   1 3 0.1+0.3i 0.02i;
+   2 3 0.15+0.45i 0.03i;
+   2 4 0.1+0.3i 0.02i;
+   3 4 0.05+0.15i 0.01i;]
+frombus = c(:,1);
+tobus   = c(:,2);
+z       = c(:,3);
+HLC     = c(:,4);
+
+y = 1 ./ z;                                     
+nbus = max(max(frombus), max(tobus));          
+nline = length(frombus);
+
+Y = zeros(nbus);                               
+
+for k = 1:nline
+    p = frombus(k);
+    q = tobus(k);
+
+    Y(p,p) = Y(p,p) + y(k) + HLC(k);            
+    Y(q,q) = Y(q,q) + y(k) + HLC(k);             
+
+    Y(p,q) = Y(p,q) - y(k);                     
+    Y(q,p) = Y(p,q);                             
+end
+disp(Y)
