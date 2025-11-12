@@ -1,0 +1,181 @@
+## Y-BUS Inspection Method ##
+
+c=[ 1  2   0.05+0.15i   0.01i;
+      1  3   0.1+0.3i        0.02i;
+      2  3   0.15+0.45i    0.03i;
+      2  4   0.1+0.3i        0.02i;
+      3  4   0.05+0.15i    0.01i];
+frombus=c(:,1)
+tobus=c(:,2)
+Z=c(:,3)
+HLC=c(:,4)
+y=1./Z
+nbus=max(max(frombus),max(tobus))
+nline=length(frombus)
+Y=zeros(nbus)
+for k=1:nline
+p=frombus(k)
+q=tobus(k)
+Y(p,p)=Y(p,p)+y(k)+HLC(k)
+Y(q,q)=Y(q,q)+y(k)+HLC(k)
+Y(p,q)=Y(p,q)-y(k)
+Y(q,p)=Y(p,q)
+end
+
+## SINGULAR TRANSFORMATION (HLC) ##
+
+c=[1  2  0.02+0.06i  0.03i;
+     1  3  0.08+0.24i  0.025i;
+     2  3  0.06+0.18i  0.02i;
+     2  4  0.06+0.18i  0.02i;
+     2  5  0.04+0.12i  0.015i;
+     3  4  0.01+0.03i  0.01i;
+     4  5  0.08+0.24i  0.025i];
+frombus=c(:,1);
+tobus=c(:,2)
+Z=c(:,3);
+HLC=c(:,4);
+Y=1./Z;
+nbus=max(max(frombus),max(tobus));
+nline=length(frombus);
+A=zeros(nline,nbus);
+for k=1:nline
+A(k,frombus(k))=1;
+A(k,tobus(k))=-1;
+end
+A(:,1)=[]
+Ypr=zeros(nline,nline)
+for k=1:nline
+Ypr(k,k)=Y(k)
+end
+Ybus=zeros(nbus)
+for k=1:nline
+q=frombus(k)
+x=tobus(k)
+Ypr(q,q)=Ypr(q,q)+HLC(k)
+Ypr(x,x)=Ypr(x,x)+HLC(k)
+end
+Ybus=A'*Ypr*A
+Zbus=inv(Ybus)
+
+## SINGULAR TRANSFORMATION (MCN) ##
+
+c=[1 2  0.6 0 0.0
+1 3 0.5 1 0.1
+3 4 0.5 0 0.0
+1 2 0.4 1 0.2
+2 4 0.2 0  0.0];
+frombus=c(:,1);
+tobus=c(:,2);
+Z=c(:,3);
+mcn=c(:,4)
+Zmut=c(:,5); nline=length(frombus);
+nbus=max(max(frombus),max(tobus)) a=zeros(nline,nbus)
+for k=1:nline a(k,frombus(k))=1;
+a(k,tobus(k))=-1; end
+a(:,1)=[]
+Zpr=zeros(nline) for k=1:nline Zpr(k,k)=Z(k)
+if mcn(k)>0 Zpr(k,mcn(k))=Zmut(k);
+Zpr(mcn(k),k)=Zmut(k); end
+end Ypr=inv(Zpr); Ybus=a'*Ypr*a
+
+## Swing curve sustained fault  ##
+
+fid=fopen('swing.txt','r')
+f=50
+[P, E, V, M, X0, X1, X2]=textread('swing.txt','%f %f %f %f %f %f %f')
+fclose(fid)
+deld=0.0
+delt=0.01
+Pmax=E*V/X0
+Pmax1=Pmax
+sind=P/Pmax
+d=asin(sind)
+d0=d
+Pe=Pmax*sind
+Pa1=P-Pe
+Pmax=(E*V)/X1
+Pe=Pmax*sind
+Pa2=P-Pe
+Pa=(Pa1+Pa2)/2
+for t=0:.01:1
+time=t
+deld=deld+(delt*delt*Pa)/M
+d=d+deld
+Pe=Pmax*sin(d)
+Pa=P-Pe
+xindeg=d*180/pi
+plot(time,xindeg,'ro'),grid
+hold on
+title('swing curve for sustained fault')
+legend('swing curve')
+xlabel('Time(sec')
+ylabel('delta(deg)')
+end
+H=M*pi*f;
+r1=X0/X1
+r2=X0/X2
+d3=asin(P/(r2*Pmax1))
+dmax=pi-d3
+dcc=acos(((dmax-d0)*sin(d0)+r2*cos(dmax)-r1*cos(d0))/(r2-r1))
+tcc=sqrt(2*H*(dcc-d0)/(pi*f*P))
+fprintf('\n critical clearing angle in degrees is:%g',(dcc*180/pi))
+fprintf('\n critical clearing time in seconds is:%g',(tcc))
+
+Create 
+swing.txt
+0.9 1.1 1.0 0.016 0.45 1.25 0.55
+Then execute main file
+Output 
+Critical clearing angle in degrees is: 118.606
+Critical clearing time in seconds is: 0.245349
+Output wave form
+
+## Swing curve fault cleared  ##
+
+fid=fopen('swing1.txt','r')
+f=50
+[P,E,V,M,X0,X1,X2,tcr]=textread('swing1.txt','%f %f %f %f %f %f %f %f')
+fclose(fid)
+deld=0.0
+delt=0.01
+Pmax=(E*V)/X0
+Pmax1=Pmax
+sind=P/Pmax
+d=asin(sind)
+d0=d
+Pe=Pmax*sind
+Pa1=P-Pe
+Pmax=(E*V)/X1
+Pe=Pmax*sind
+Pa2=P-Pe
+Pa=(Pa1+Pa2)/2
+for t=0:0.01:1
+time=t
+if t==tcr
+Pa1=Pa
+Pmax=E*V/X2
+Pe=Pmax*sin(d)
+Pa2=P-Pe
+Pa=(Pa1+Pa2)/2
+end
+if t>tcr
+Pmax=E*V/X2
+end
+xindeg=d*180/pi
+plot(time,xindeg,'ro'),grid
+hold on
+title('swing curve for fault cleared')
+legend('swing')
+xlabel('Time(sec)')
+ylabel('delta(deg')
+deld=deld+(delt*delt*Pa)/M
+d=d+deld
+Pe=Pmax*sin(d)
+Pa=P-Pe
+end
+
+Input file
+ swing1.txt
+0.9 1.1 1.0 0.016 0.45 1.25 0.55 0.3 
+
